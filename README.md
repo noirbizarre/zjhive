@@ -1,0 +1,35 @@
+<p align="center">
+  <img src="docs/images/icon.svg" alt="zjhive" width="160">
+</p>
+
+<h1 align="center">zjhive</h1>
+
+<p align="center"><strong>Zellij plugin for Hive ACP sessions</strong></p>
+
+<p align="center">
+  <a href="https://github.com/noirbizarre/zjhive/actions/workflows/ci.yaml">
+    <img src="https://github.com/noirbizarre/zjhive/actions/workflows/ci.yaml/badge.svg" alt="CI">
+  </a>
+  <a href="https://codecov.io/gh/noirbizarre/zjhive">
+    <img src="https://codecov.io/gh/noirbizarre/zjhive/graph/badge.svg" alt="Codecov">
+  </a>
+  <img src="https://img.shields.io/github/v/release/noirbizarre/zjhive" alt="Release">
+  <img src="https://img.shields.io/github/license/noirbizarre/zjhive" alt="License">
+</p>
+
+---
+
+<!-- One paragraph: what this does and why it exists. Lead with the problem, -->
+<!-- not the implementation. -->
+
+## Installation
+
+<!-- List the member crates and how to install each of them. -->
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+MIT — see [LICENSE](LICENSE).
