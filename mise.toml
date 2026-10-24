@@ -208,3 +208,31 @@ git tpl diff --exit-code --stat
 #
 # Artwork tasks belong here rather than in `default` or `check`: they rewrite
 # committed binaries, so a routine run would dirty the working tree every time.
+
+[tasks."plugin:build"]
+description = "Build the Zellij 0.45.1 Preview 1 plugin"
+run = "cargo build --locked -p zjhive --target wasm32-wasip1 --release"
+
+[tasks."probe:build"]
+description = "Build the real-host transport diagnostic plugin"
+run = "cargo build --locked -p transport-probe --target wasm32-wasip1 --release"
+
+[tasks."probe:host"]
+description = "Probe socket and SSE capabilities in a disposable Zellij host"
+depends = ["probe:build"]
+run = "python tools/transport_probe.py"
+
+[tasks.package]
+description = "Package matching plugin and host-native companion"
+depends = ["plugin:build"]
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+host="$(rustc -vV | sed -n 's/^host: //p')"
+cargo build --locked -p zjhive-bridge --release --target "$host"
+python tools/package.py --target "$host"
+"""
+
+[tasks."docs:check"]
+description = "Lint the extracted integration documentation"
+run = 'npx -y -p markdownlint-cli2 -p markdownlint-cli2-formatter-pretty -- markdownlint-cli2 "docs/**/*.md"'

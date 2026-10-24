@@ -1,0 +1,9 @@
+// Replace the file URL with your installed plugin's absolute path.
+layout {
+    pane {
+        plugin location="file:/absolute/path/zjhive.wasm" {
+            url "http://127.0.0.1:8765"
+            bridge "http://127.0.0.1:8766"
+        }
+    }
+}

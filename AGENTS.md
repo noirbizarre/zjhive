@@ -4,10 +4,9 @@ Notes for anyone — human or otherwise — changing this repository.
 
 ## What this project is
 
-Zellij plugin for Hive ACP sessions
-
-<!-- Replace this with the one paragraph that, if someone read only it, would -->
-<!-- stop them proposing the wrong thing. Then list the invariants below.     -->
+An independent Zellij ACPv2 client for Hive. This repository owns the WASI plugin
+and its native loopback transport companion. Hive alone owns sessions and agents;
+the companion only adapts finite WebAccess calls to persistent ACP connections.
 
 ## Non-negotiable invariants
 

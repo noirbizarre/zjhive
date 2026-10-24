@@ -1,0 +1,30 @@
+[package]
+name = "zjhive-bridge"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "ZJHive's loopback WebAccess to ACPv2 transport adapter"
+publish = false
+
+[dependencies]
+agent-client-protocol.workspace = true
+agent-client-protocol-http.workspace = true
+axum.workspace = true
+clap.workspace = true
+miette.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+url.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+agent-client-protocol-http = { workspace = true, features = ["server"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "json"] }
+tempfile = "3"
