@@ -1,0 +1,22 @@
+# git-tpl — https://noirbizarre.github.io/git-tpl/configuration/
+#
+# This file is versioned with the project. Edit an answer and run
+# `git tpl update` to re-render the template with it.
+
+[template]
+source = "https://github.com/noirbizarre/rust.tpl"
+
+[answers]
+author = "Axel Haustant"
+categories = "development-tools"
+copyright_holder = "Axel Haustant"
+copyright_year = 2026
+crate = "zjhive"
+description = "Zellij plugin for Hive ACP sessions"
+docs = false
+keywords = "acp, zellij, ai"
+kind = "workspace"
+msrv = true
+msrv_version = "1.98"
+owner = "noirbizarre"
+publish = false
