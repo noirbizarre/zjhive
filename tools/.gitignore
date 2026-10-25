@@ -1,0 +1,2 @@
+# Importing the packaging helper during contract checks must not dirty the workspace.
+__pycache__/

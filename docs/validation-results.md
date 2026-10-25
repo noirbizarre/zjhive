@@ -1,4 +1,28 @@
-# Extraction validation results
+# Validation results
+
+## Companion-free dashboard
+
+Recorded 2026-10-25 on Linux x86-64 with Zellij 0.45.1. These checks ran locally;
+remote CI, real-Hive integration and release publishing were not executed.
+
+| Check | Result |
+|---|---|
+| `mise run ci` | Passed formatting, Clippy, workflow/Markdown linting, spelling and all nine native dashboard tests |
+| `mise run docs:check` | Passed documentation lint |
+| `mise run dashboard:check` | Passed both host-boundary and packaging contract checks |
+| `mise run plugin:build` | Built the release `wasm32-wasip1` plugin |
+| `python tools/live_smoke.py` | Passed real-host loading, local details, reorder, stale/recovery, empty catalogue and CLI loading |
+| Smoke HTTP trace | Only GET requests to `/v1/sessions` and `/v1/status`; no ACP or mutation |
+| `mise run package` | Produced `zjhive-0.1.0.wasm` and `zjhive-0.1.0.sha256` |
+| `sha256sum --check zjhive-0.1.0.sha256` in `dist/` | Passed |
+| `git diff --check` | Passed |
+
+The real-host smoke uses a deterministic HTTP fixture, not a Hive daemon. Current
+Hive source schemas were inspected separately; no session was created or changed.
+
+## Historical companion-era extraction
+
+The results below do not validate the replacement read-only dashboard.
 
 Recorded 2026-10-24 on Linux x86-64, Rust 1.99.0, Zellij 0.45.1.
 These are local executed checks, not claims that remote CI or release publishing ran.

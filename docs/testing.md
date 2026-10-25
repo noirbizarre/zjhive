@@ -1,76 +1,57 @@
 # Testing
 
-See [recorded extraction results](validation-results.md) for executed checks and
-the distinction between protocol fixtures, live host evidence and unrun scenarios.
-
 ## Independent checks
 
-No Hive checkout, installed Hive binary or daemon is needed for these:
+No Hive checkout, installed Hive binary or daemon is needed:
 
 ```sh
-cargo metadata --locked --format-version 1
-cargo build --locked --workspace
 cargo test --locked --workspace
-cargo build --locked -p zjhive --target wasm32-wasip1 --release
-cargo fmt --all -- --check
-cargo clippy --locked --all-targets --all-features -- -D warnings
 mise run ci
 mise run docs:check
-gh ship validate
+mise run dashboard:check
+mise run plugin:build
 ```
 
-Native tests cover plugin epochs/stale results, replay gaps, control and retry UI,
-interaction validation and a standalone published-SDK ACP fixture that delivers a
-permission request before prompt acknowledgement. That fixture verifies polling
-and replies remain possible while the acknowledgement is pending. It is not a
-second session manager and does not assert daemon behavior.
-
-One contract test is deliberately ignored by the ordinary suite: it launches an
-independently supplied Hive executable with temporary configuration/state/runtime
-directories and a deterministic ACP agent. It uses public interfaces only.
-
-```sh
-HIVE_TEST_BIN=/absolute/path/to/hive cargo test -p zjhive-bridge bridge_attaches -- --ignored --nocapture
-```
-
-It verifies catalog identity, observe/takeover, stale-pilot fencing, prompts,
-permission/form/URL answers, stale interaction rejection, completion, conditional
-same-key retry, and detach preserving the session. The daemon is terminated on
-test cleanup; the user's running daemon is never used.
+Native dashboard tests cover response validation, selection identity, daemon revision
+reset, cached stale data, independent endpoint freshness, overdue and delayed requests,
+local details, safe rendering, and viewport navigation. Python contract checks enforce
+the WebAccess/GET-only host integration and single-WASM/checksum packaging boundary.
+The dedicated plugin workflow runs those checks and builds/packages the WASM.
 
 ## Real Zellij smoke
 
-Build the actual plugin, diagnostic and debug companion. Run the capability probe
-as described in [transport validation](transport-validation.md). Then run:
-
 ```sh
-cargo build --locked -p zjhive-bridge
-cargo build --locked -p zjhive --target wasm32-wasip1 --release
-HIVE_TEST_BIN=/absolute/path/to/hive ZJHIVE_LIVE_SMOKE=1 cargo test -p zjhive-bridge bridge_attaches -- --ignored --nocapture
+mise run plugin:smoke
 ```
 
-`tools/live_smoke.py` opens the plugin in an isolated Zellij session with locked
-key mode, grants permissions, selects the fixture session, takes control, submits
-a prompt, restarts the companion, checks observer recovery and detaches. It checks
-rendered host output and the real daemon catalog, and cleans up its own processes.
-Python 3.11+, Unix PTYs, Zellij 0.45.1 and a free loopback port are required.
+Python 3.11+, Unix PTYs and Zellij 0.45.1 are required. The smoke loads the actual
+release WASM in a disposable locked-mode Zellij session and starts a finite HTTP
+fixture on an ephemeral loopback port. It grants WebAccess, inspects local details,
+reorders records, simulates failure/recovery, shows an empty catalogue, and exercises
+the documented CLI loading syntax. Recorded requests must be GETs to the two
+operational endpoints. Cleanup kills only its own host session and fixture server.
 
-For additional human UI coverage, use `python tools/live_smoke.py --url URL`
-against a disposable daemon with an existing session. Exercise a permission, each
-supported form field, URL consent followed by completion, Ctrl-C cancellation,
-Ctrl-H relinquish, plugin reload during work, a gap larger than retained replay,
-daemon restart, and ambiguous acknowledgement retry. Never infer success from
-unexecuted checklist items; automated protocol coverage is distinct from host UI
-coverage. The scripted host smoke currently covers the narrower sequence above.
+The optional `mise run probe:host` reproduces the historical socket/SSE host
+capability findings in [transport validation](transport-validation.md).
+Native tests or compilation alone do not prove actual WASI loading.
+
+For optional real-Hive verification, load the plugin with `url` pointing at an
+existing compatible daemon. Compare catalogue details and daemon version with its
+operational HTTP responses. Select a session and confirm the observer count does not
+increase. Inspect messages/control in Hive's own clients, rather than creating or
+mutating a session merely to test the dashboard.
 
 ## Packaging
 
 ```sh
 mise run package
-tar -tzf dist/zjhive-0.1.0-x86_64-unknown-linux-gnu.tar.gz
 ```
 
-Use the current workspace version in artifact names. CI builds the WASM plus a
-Linux x86-64 companion and packages matching artifacts. gh-ship still owns release
-preparation, versioning and tags; publishing attaches the built assets to its release.
-Local packaging does not test the repository's release credentials or execute uploads.
+The outputs are `dist/zjhive-<version>.wasm` and `dist/zjhive-<version>.sha256`.
+In `dist/`, run `sha256sum --check zjhive-<version>.sha256`, substituting the current
+workspace version. No platform-specific native archive is built or published.
+gh-ship continues to own release preparation, versioning and tags; local packaging
+does not test release credentials or execute uploads.
+
+See [validation results](validation-results.md) for executed checks. Historical
+companion-era results are not evidence for the new dashboard implementation.

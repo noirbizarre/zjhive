@@ -4,102 +4,88 @@
 
 <h1 align="center">zjhive</h1>
 
-<p align="center"><strong>Zellij plugin for Hive ACP sessions</strong></p>
+<p align="center"><strong>Read-only Zellij catalogue and status dashboard for Hive</strong></p>
 
-<p align="center">
-  <a href="https://github.com/noirbizarre/zjhive/actions/workflows/ci.yaml">
-    <img src="https://github.com/noirbizarre/zjhive/actions/workflows/ci.yaml/badge.svg" alt="CI">
-  </a>
-  <a href="https://codecov.io/gh/noirbizarre/zjhive">
-    <img src="https://codecov.io/gh/noirbizarre/zjhive/graph/badge.svg" alt="Codecov">
-  </a>
-  <img src="https://img.shields.io/github/v/release/noirbizarre/zjhive" alt="Release">
-  <img src="https://img.shields.io/github/license/noirbizarre/zjhive" alt="License">
-</p>
+Browse [Hive](https://github.com/noirbizarre/hive) sessions, inspect their metadata,
+and monitor daemon status inside Zellij. ZJHive is a single WASM plugin: no native
+companion, command execution, or additional runtime tools are needed.
 
----
-
-ZJHive lets you observe and control existing [Hive](https://github.com/noirbizarre/hive)
-ACP sessions inside Zellij. It provides a live session catalogue, explicit takeover
-and relinquish, replay/gap detection, prompts with safe same-key retries,
-cancellation, permission choices, forms and URL consent/completion.
-
-Hive owns sessions and agent processes. ZJHive owns both the WASI UI and its small
-native `zjhive-bridge` companion. The companion adapts finite Zellij WebAccess
-requests to a persistent ACPv2 WebSocket connection; it never manages sessions.
+Hive owns sessions and agents. The dashboard polls its finite operational HTTP
+endpoints through Zellij WebAccess. Details show catalogue metadata, not conversation
+history; use Hive's TUI or WebUI for messages, prompts and control.
 
 ## Installation
 
-Prerequisites: **Zellij 0.45.1**, a running compatible Hive daemon, and the matching
-plugin/companion pair. The initially packaged native platform is Linux x86-64.
-Other native platforms have template CI coverage but no packaged release assets.
+Requirements: **Zellij 0.45.1** and a running Hive daemon exposing
+`/v1/sessions` and `/v1/status` (see [compatibility](docs/architecture.md)).
 
-For a published release, download the matching native archive and checksum file,
-verify with `sha256sum --check` (also download the standalone WASM referenced by
-that checksum file), and extract the archive. Install its `zjhive-bridge` on PATH
-and its `zjhive.wasm` in your Zellij plugin directory. The archive also contains an
-example layout whose absolute plugin path must be edited before loading.
+Download `zjhive-<version>.wasm` and `zjhive-<version>.sha256` from the release
+assets. In their download directory, verify the checksum before installing:
 
-From source (Rust 1.98+ and Python 3.11+):
+```sh
+sha256sum --check zjhive-<version>.sha256
+install -Dm644 zjhive-<version>.wasm ~/.config/zellij/plugins/zjhive.wasm
+```
+
+Replace `<version>` with the downloaded release version. The same artifact is
+used on every supported Zellij host platform; there is no crates.io install path.
+
+From source (Rust 1.98+):
 
 ```sh
 rustup target add wasm32-wasip1
 cargo build --locked -p zjhive --target wasm32-wasip1 --release
-cargo build --locked -p zjhive-bridge --release
-install -Dm755 target/release/zjhive-bridge ~/.local/bin/zjhive-bridge
 install -Dm644 target/wasm32-wasip1/release/zjhive.wasm ~/.config/zellij/plugins/zjhive.wasm
 ```
 
 Inside a Zellij session:
 
 ```sh
-zellij plugin --configuration 'url=http://127.0.0.1:8765,bridge=http://127.0.0.1:8766' -- "file:$HOME/.config/zellij/plugins/zjhive.wasm"
+zellij plugin --configuration 'url=http://127.0.0.1:8765' -- "file:$HOME/.config/zellij/plugins/zjhive.wasm"
 ```
 
-Grant **WebAccess** and **RunCommands**. Ensure `zjhive-bridge` is on the Zellij
-server's PATH (restart Zellij after changing PATH). The plugin starts the companion
-when its health endpoint is unavailable. Alternatively run it explicitly:
+Grant **WebAccess**. The `url` setting defaults to `http://127.0.0.1:8765`.
+An example startup layout is in [layouts/zjhive.kdl](layouts/zjhive.kdl); edit its
+plugin path before loading. An obsolete `bridge` setting is ignored with a migration
+message. The old companion is no longer started or required.
 
-```sh
-zjhive-bridge --listen 127.0.0.1:8766 --url http://127.0.0.1:8765
-```
+## Controls and status
 
-The `url` and `bridge` settings are preserved from the former in-tree plugin.
-The executable and WASM artifact have changed: install both together, replacing
-`hive zellij-bridge` and `hive_zellij.wasm`. There is no crates.io install path.
-Release workflows attach matching assets and checksums; no release has been
-published or tested as part of the extraction.
+| Key | Action |
+|---|---|
+| Up / Down | Select a session, or scroll details |
+| Page Up / Page Down | Move by a page |
+| Home / End | First / last session or detail page |
+| Enter | Inspect selected session metadata locally |
+| Esc | Return to the catalogue |
+| `r` | Refresh catalogue and daemon status |
 
-## Controls
+If Zellij intercepts a key, switch to its locked mode to forward it to the plugin.
 
-Use arrows and Enter to observe a session. Ctrl-T takes control, Ctrl-H relinquishes,
-Enter submits a prompt, Ctrl-C cancels, Ctrl-R retries the same uncertain prompt
-(or explicitly accepts live-only history after a replay gap), and Esc detaches.
-Forms support Tab, arrows, typed values and `|`-separated multiselect values;
-permission requests use the displayed option numbers. Enter accepts and Esc declines
-an interaction. PgUp/PgDn inspect long interaction details.
+Details include lifecycle/recovery, activity, cwd, ownership, observers, native
+session metadata, reported token/cost usage, and a WebUI URL. Selecting a session
+does not attach an observer, take control, or change anything in Hive.
 
-Zellij may reserve Ctrl-T/Ctrl-H; switch to its locked mode to forward these keys.
-Detaching, reloading the plugin or stopping the companion does not close Hive sessions.
+Catalogue refresh is approximately every four seconds; daemon status every twenty.
+Failures retain cached data marked **STALE**, with independent retry backoff per
+endpoint. Unknown usage is displayed as unknown. Overdue requests have bounded
+retries; if the host leaves requests stuck, reload the plugin to recover.
 
 ## Development
 
 ```sh
-cargo test --locked --workspace
 mise run ci
 mise run docs:check
+mise run dashboard:check
+mise run plugin:smoke
 mise run package
-mise run probe:host
 ```
 
-`mise run package` produces the plugin, a host-native archive and checksums in
-`dist/`. See [architecture and compatibility](docs/architecture.md),
-[transport evidence](docs/transport-validation.md), and
-[the smoke-test procedure](docs/testing.md).
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+`mise run package` writes only the versioned WASM and its checksum to `dist/`.
+The real-host smoke needs Python 3.11+, Unix PTYs and Zellij; no Hive daemon is
+required. The optional `mise run probe:host` checks host transport capabilities.
+See [architecture](docs/architecture.md), [transport evidence](docs/transport-validation.md),
+[testing](docs/testing.md), and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

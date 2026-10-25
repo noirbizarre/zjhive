@@ -15,9 +15,11 @@ jobs:
           targets: wasm32-wasip1
       - run: cargo build --locked -p zjhive --target wasm32-wasip1 --release
       - run: cargo build --locked -p transport-probe --target wasm32-wasip1 --release
-      - run: cargo build --locked -p zjhive-bridge --release --target x86_64-unknown-linux-gnu
-      - run: python tools/package.py --target x86_64-unknown-linux-gnu
+      - run: python -m unittest discover -s tools -p 'test_*.py'
+      - run: python tools/package.py
       - uses: actions/upload-artifact@v7
         with:
-          name: zjhive-linux-x86_64
-          path: dist/*
+          name: zjhive-wasm
+          path: |
+            dist/*.wasm
+            dist/*.sha256

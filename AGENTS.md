@@ -4,16 +4,22 @@ Notes for anyone — human or otherwise — changing this repository.
 
 ## What this project is
 
-An independent Zellij ACPv2 client for Hive. This repository owns the WASI plugin
-and its native loopback transport companion. Hive alone owns sessions and agents;
-the companion only adapts finite WebAccess calls to persistent ACP connections.
+A read-only Zellij catalogue/status dashboard for Hive, distributed as one WASI
+plugin. Hive alone owns sessions and agents. The plugin uses finite operational
+HTTP requests through Zellij WebAccess; it has no native runtime helper.
 
 ## Non-negotiable invariants
 
 Each of these should be enforced by a hook or a test. An invariant nothing
 checks is a comment, and it will be violated.
 
-<!-- 1. **...** — enforced by `tests/....rs`. -->
+1. **WebAccess only, finite GETs, no native commands** — enforced by
+   `tools/test_dashboard.py` and `dashboard.rs` endpoint tests.
+2. **Session details never attach or control** — enforced by the local-details
+   test in `crates/zjhive/src/dashboard.rs` and the real-host smoke.
+3. **Failed refresh preserves cached data as stale** — enforced by the independent
+   freshness tests in `crates/zjhive/src/dashboard.rs`.
+4. **One WASM artifact and matching checksum** — enforced by `tools/test_dashboard.py`.
 
 ## Layout
 

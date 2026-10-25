@@ -3,8 +3,8 @@
 ## Integration development
 
 Build the plugin with `mise run plugin:build` and run `mise run docs:check` for the
-integration documentation. `mise run package` packages the plugin and companion;
-see [testing](docs/testing.md) for independent and real-Hive/Zellij smoke tests.
+integration documentation. `mise run package` packages the WASM and checksum;
+see [testing](docs/testing.md) for independent and real-Zellij smoke tests.
 Native tests do not prove plugin loading or networking in Zellij's WASI host.
 
 ## Setup

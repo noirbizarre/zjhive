@@ -32,7 +32,8 @@ Compiler: Rust 1.99.0; target: `wasm32-wasip1`.
 4. The SDK's workers and CLI pipe/message surfaces supply background processing
    and IPC, not additional socket creation. No native-free persistent transport
    was identified. CLI-pipe networking was not live-prototyped; it would still
-   need an external network pump. Select the existing finite-HTTP/native-ACP adapter.
+   need an external network pump. The companion-free dashboard therefore uses only
+   finite operational HTTP requests and leaves ACP interaction to Hive's own clients.
 
 Supporting exact-version source:
 
@@ -50,7 +51,7 @@ exported function.” Building a WASI executable supplies `_start`; both diagnos
 and actual plugins subsequently loaded. Native tests/WASM compilation alone did
 not catch this ABI issue.
 
-The selected companion architecture also passed a real-host integration smoke:
+Historically, the former companion architecture passed a real-host integration smoke:
 catalog selection, observer attachment, takeover, accepted prompt, stale state on
 companion loss, observer-only reconnect after companion restart, detach and session
 survival. Permission/form/URL semantics and old-pilot fencing additionally passed
