@@ -54,15 +54,17 @@ jobs:
         with:
           targets: wasm32-wasip1
       - run: cargo build --locked -p zjhive --target wasm32-wasip1 --release
-      - run: cargo build --locked -p zjhive-bridge --release --target x86_64-unknown-linux-gnu
-      - run: python tools/package.py --target x86_64-unknown-linux-gnu
+      - run: python tools/package.py
       - uses: actions/create-github-app-token@v3
         id: app-token
         with:
           client-id: ${{ vars.APP_CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
-      - name: Attach matching plugin and companion
+      - name: Attach platform-independent plugin and checksum
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           TAG: ${{ inputs.tag }}
-        run: gh release upload "$TAG" dist/* --clobber
+        # Read the version explicitly so old build artifacts cannot enter a release.
+        run: |
+          version="$(python -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["workspace"]["package"]["version"])')"
+          gh release upload "$TAG" "dist/zjhive-$version.wasm" "dist/zjhive-$version.sha256" --clobber

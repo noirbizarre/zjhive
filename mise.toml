@@ -223,15 +223,18 @@ depends = ["probe:build"]
 run = "python tools/transport_probe.py"
 
 [tasks.package]
-description = "Package matching plugin and host-native companion"
+description = "Package the platform-independent plugin and checksum"
 depends = ["plugin:build"]
-run = """
-#!/usr/bin/env bash
-set -euo pipefail
-host="$(rustc -vV | sed -n 's/^host: //p')"
-cargo build --locked -p zjhive-bridge --release --target "$host"
-python tools/package.py --target "$host"
-"""
+run = "python tools/package.py"
+
+[tasks."plugin:smoke"]
+description = "Exercise the dashboard in a disposable real Zellij host"
+depends = ["plugin:build"]
+run = "python tools/live_smoke.py"
+
+[tasks."dashboard:check"]
+description = "Check runtime boundaries and WASM packaging"
+run = "python -m unittest discover -s tools -p 'test_*.py'"
 
 [tasks."docs:check"]
 description = "Lint the extracted integration documentation"

@@ -1,89 +1,72 @@
 # Architecture and compatibility
 
-## Responsibilities
+## Responsibilities and boundaries
 
-The plugin discovers sessions through Hive's operational `GET /v1/sessions`.
-It uses completion-based Zellij WebAccess for finite calls to the local companion.
-Each registered plugin gets a separate ACPv2 connection to Hive `/acp`.
-The companion forwards all control, prompts, cancellation and human decisions
-through ACP; it adds no state-changing HTTP route to the Hive daemon.
+ZJHive is a read-only catalogue/status dashboard distributed as one WASM plugin.
+Hive alone owns sessions, agents and conversation/control workflows. The plugin
+requests only Zellij WebAccess and issues finite GET requests:
 
-Hive alone owns sessions, workers, fencing, replay and turn execution. Local
-registration handles, bounded update/interaction queues and uncertain prompt keys
-are transient client state. They do not create a second session manager.
+- `/v1/sessions`: authoritative catalogue snapshots, including offline/recovery records.
+- `/v1/status`: daemon version, default agent and live-session counts by profile.
 
-The plugin requires Zellij 0.45.1 and matching `zellij-tile =0.45.1`. The build
-target is `wasm32-wasip1`, confirmed by that release's upstream build pipeline and
-live host loading. Preview 2 components and browser WebSocket APIs are not the
-supported plugin ABI. Workers use the same host API; CLI pipes supply IPC, not a
-network client. A native network pump would still need native distribution.
-The tested finite-HTTP adapter preserves the existing flow without new IPC semantics.
+Selecting a session opens local metadata details, without attaching an ACP observer.
+The dashboard neither connects to `/acp` nor consumes SSE. There are no native
+commands, network helpers or loopback listeners. It displays a `/ui?session=...`
+URL for handoff; it does not launch a browser.
 
-## Versioned boundaries
+`main.rs` contains host integration; `model.rs` projects the operational JSON API;
+`dashboard.rs` owns pure state transitions and rendering. The optional
+`transport-probe` crate is a developer diagnostic, excluded from release assets.
 
-The extracted client uses published ACP Rust SDK and HTTP transport **3.4.0**,
-including unstable ACPv2. Compatibility was tested against Hive revision
-`0100e387d91f886b8af7eab14ca72f866401decc` before the route migration. The extracted
-client now targets the `/v1` operational API introduced by Hive `9cf7f30` and was
-revalidated against Hive `93ccd98` with the extraction applied. The old `/hive/v1`
-routes are not used, so older daemons exposing only those routes are unsupported.
-The browser UI moved to `/ui`; ACP remains at `/acp`. No broader version-range
-guarantee is made.
-Hive extensions used include `_meta.hive` role/generation/token/key metadata,
-`_hive_seq` inclusive replay, sequence numbers, `_hive_control`, and catalog fields.
-See Hive's [ACP contract](https://noirbizarre.github.io/hive/acp-compatibility/).
-Draft ACP or Hive-extension changes require compatibility testing and may require
-a coordinated update; using the same SDK version alone does not prove compatibility.
+## Compatibility
 
-The companion `/health` returns `ready`, `protocol: 1`, and package `version`.
-The plugin refuses incompatible protocol versions before registration. Install
-plugin and companion from the same release; an old Hive-owned bridge is rejected.
-Local `/bridge` names/configuration are retained for migration, not promised as a
-public third-party API. Hive remains the only authority for mutation acceptance.
+The supported host is Zellij 0.45.1 with `zellij-tile =0.45.1`, targeting
+`wasm32-wasip1`. This is a WASI executable, not a Preview 2 component or a browser
+module. See [the real-host transport evidence](transport-validation.md).
 
-Client validation and conformance cases originate from Hive `0100e38`, under MIT.
-They are owned/tested here with the published SDK, without a source-tree dependency.
-Hive keeps its own authoritative validation. Library diagnostics redact submitted
-values because forms can contain credentials.
+Hive must expose the `/v1` operational API introduced by revision `9cf7f30`.
+Dashboard models were checked against local Hive revision `0f0662b`.
+This is a schema reference, not a claim of a live-daemon integration test.
+The former `/hive/v1` routes are unsupported.
 
-## Configuration and trust
+Catalogue responses require `revision`, `sessions`, and each session's nonempty
+unique `sessionId`, nonempty `agent`, and `cwd`. Additional fields are tolerated;
+newer lifecycle, recovery and usage metadata may be absent. Unknown status values
+remain inspectable. Usage tokens are nested under `usage.tokens`; absent values
+are unknown, not zero. Estimated cost and actual session cost remain separate.
 
-Defaults are daemon `http://127.0.0.1:8765` and companion
-`http://127.0.0.1:8766`. The companion accepts `--listen`, `--url`, and `HIVE_URL`.
-Only loopback listeners are permitted. HTTP base URLs are converted structurally
-to WebSocket URLs (HTTPS to WSS); this does not promise remote Hive support.
-Hive currently supports one trusted local OS user, with no separate client
-authentication or TLS configuration here. Pilot tokens fence stale controllers;
-they are not authorization against malicious local users. Do not expose either
-listener through a public proxy. No credentials are added to the plugin settings.
+Catalogue revision is not a durable daemon incarnation or ACP replay cursor.
+Lower revisions after restart are accepted. Status and catalogue are independent
+snapshots: momentary count differences are normal. `activeByAgent` counts live
+sessions, including idle sessions, rather than running work.
 
-## Failure and lifecycle behavior
+## Configuration
 
-- First attach observes; takeover is explicit. Relinquish remains an observer.
-- Replay is inclusive and bounded (256 updates); gaps require explicit live-only
-  recovery, visibly marked as missing earlier history. Restart rollback is stale.
-- Upstream disconnect clears ownership and interactions, retries after two seconds,
-  and reconnects as observer using the last sequence. It never silently takes control.
-- Plugin polling is approximately two seconds for a selected session and four for
-  the catalog, with failure backoff up to sixteen seconds. Stale views disable control.
-- Prompt acknowledgements mean accepted, not complete. An uncertain acknowledgement
-  retains exact key/text for a same-key retry and blocks a distinct new prompt.
-  Slow acknowledgements do not block polling, cancellation or interaction replies.
-- Permission IDs and interaction identities prevent stale answers. Forms are validated;
-  unsupported schemas or unsafe URLs cannot authorize anything. Session-scoped
-  questions follow the pilot; request-scoped elicitation can follow its original caller.
-- URL consent is distinct from completion; early completion and deadlines are correlated.
-- Companion handles expire after thirty seconds without calls, checked every five
-  seconds. Detach or expiry drops the ACP client, never closes a Hive session.
-- A manually started companion stays available until stopped with Ctrl-C or a process
-  supervisor. Zellij's command execution callback is emitted on process exit, not
-  incrementally; updates therefore use finite HTTP polling, not helper stdout.
+`url` defaults to `http://127.0.0.1:8765`. HTTP(S) base URLs may have a proxy path
+prefix; credentials, query strings, fragments and other schemes are rejected.
+No authentication configuration is supplied. The legacy `bridge` setting is ignored
+with a migration message; the old companion is not required or launched.
 
-## Existing limitations
+## Freshness and failure behavior
 
-The UI opens existing sessions; create them in another Hive client. It does not
-offer durable transcripts, interrupted-work acknowledgement or every rich ACP event.
-Use Hive's TUI/browser for those workflows. Replay and pending keys are not durable
-across a complete companion restart; after losing in-memory retry identity, inspect
-the daemon session before submitting again. Human prompts may need to be reissued
-after transport loss. The adapter is a local client, not a resumable job scheduler.
+- Catalogue polling runs approximately every four seconds, status every twenty.
+- Each endpoint independently tracks success, errors, in-flight requests and capped
+  exponential retry backoff (up to sixty seconds). `r` requests an immediate refresh
+  when request capacity is available.
+- Malformed responses and HTTP failures preserve cached data, explicitly marked stale.
+  Successful status refresh cannot make an old catalogue fresh, or vice versa.
+- Selection follows session identity through reorder. If it disappears from a valid
+  snapshot, details close with an explanatory message.
+- Requests become overdue after fifteen timer ticks. Since the host API cannot
+  cancel them, at most two outstanding requests per endpoint are allowed. Expired
+  callbacks release capacity but never replace newer accepted data. If both stay
+  stuck, reload the plugin; retries never accumulate without bound.
+- Daemon text is filtered for terminal controls and constrained to pane width.
+  Navigation remains visible when a catalogue exceeds the viewport.
+
+## Scope
+
+The dashboard does not expose conversation history, prompts, takeover, cancellation,
+permissions, forms or URL-consent workflows. Full interactive ACP support without
+a native helper needs finite ACP delivery in Hive or streaming/socket APIs in Zellij.
+Provider discovery, filtering and richer accounting views are deferred.
